@@ -4,12 +4,17 @@ ip=$(bash convip2bin.bash "$1")
 pref=$2
 first=$(cut -c 1-"$pref" <<< "$ip")
 
+to_binary() {
+    local binary="$(echo "obase=2; $1" | bc)"
+    printf "%08d" "$binary"
+}
+
 make_full_ip_24() {
-    echo "$1$(echo "obase=2; $2" | bc | awk '{printf "%08s", $0}')";
+    echo "$1$(to_binary $2)"
 }
 
 make_full_ip_16() {
-    echo "$1$(echo "obase=2; $2" | bc | awk '{printf "%08s", $0}')$(echo "obase=2; $3" | bc | awk '{printf "%08s", $0}')";
+    echo "$1$(to_binary $2)$(to_binary $3)";
 }
 
 if [[ "$pref" -eq 24 ]]
