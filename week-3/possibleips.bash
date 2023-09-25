@@ -5,11 +5,11 @@ pref=$2
 first=$(cut -c 1-"$pref" <<< "$ip")
 
 make_full_ip_24() {
-    echo "$1$(printf %08d "$2")";
+    echo "$1$(echo "obase=2; $2" | bc | awk '{printf "%08s", $0}')";
 }
 
 make_full_ip_16() {
-    echo "$1$(printf %08d%08d "$2" "$3")";
+    echo "$1$(echo "obase=2; $2" | bc | awk '{printf "%08s", $0}')$(echo "obase=2; $3" | bc | awk '{printf "%08s", $0}')";
 }
 
 if [[ "$pref" -eq 24 ]]
