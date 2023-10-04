@@ -11,14 +11,15 @@ listIPs () {
         uniq > clientIPs.txt
 }
 
-# go through clientIPs.txt and count how many times each ip has
+# go through clientIPs.txt and show each ip that has
 # accessed the website within the last day
 visitors () {
     while IFS= read -r line
     do
         cat /var/log/apache2/access.log |
             egrep "$line\s-\s-\s\[$(date +"%d/%b/%Y")" |
-            cut -d ' ' -f 1
+            cut -d ' ' -f 1 |
+            sort
     done < clientIPs.txt
 }
 
@@ -31,13 +32,41 @@ badClients () {
         regex="$line - - \[$date.*HTTP.*(404|403|400)"
 
         cat /var/log/apache2/access.log |
-            egrep "$regex"
+            egrep "$regex" |
             cut -d ' ' -f 1 |
             sort |
-            uniq -c
+            uniq -c |
+            awk '$1 >= 3 {print $2}'
 
-            # TODO: show only count higher than 3
-    done < clientIPs.txt
+    done < clientIPs.txt > blacklisted.txt
+}
+
+# block blacklisted ips
+block () {
+    iptables -F # reset previous blocks first
+
+    while IFS= read -r line
+    do
+        iptables -A INPUT -s $line -j DROP &&
+            iptables -L INPUT -v -n |
+            grep $line
+    done < blacklisted.txt
+}
+
+resetBlocks () {
+    iptables -F && iptables -L INPUT -v -n
+}
+
+# show visit histogram
+histogram () {
+    regex=".* - - \[.*HTTP.*200"
+
+    cat /var/log/apache2/access.log |
+        egrep "$regex" |
+        grep -oE '[0-9]{2}\/[A-Z][a-z]{2}\/[0-9]{4}' |
+        sort |
+        uniq -c |
+        awk '{print $1 " visits on " $2}'
 }
 
 # menu
@@ -59,11 +88,17 @@ do
 
     case "$choice" in
         1)
-            visitors | uniq -c;;
+            listIPs && cat clientIPs.txt | sort | uniq | wc -l;;
         2)
-            visitors | uniq;;
+            visitors | uniq -c;;
         3)
-            badClients;;
+            badClients && cat blacklisted.txt;;
+        4)
+            block;;
+        5)
+            resetBlocks;;
+        6)
+            histogram;;
         7)
             echo "Goodbye!"
             break;;
