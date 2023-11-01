@@ -1,0 +1,1 @@
+﻿Get-Process | Where { $_.Path -notlike "*system32*" }
